@@ -274,69 +274,49 @@ html, body {
 }
 
 .commit-list {
-  padding: 0 0 0 6px;
+  padding: 0;
   flex: 1;
   overflow: auto;
   min-height: 0;
 }
 
-.commit-graph-container {
-  display: flex;
-  position: relative;
-  width: 100%;
-}
-
-.commit-graph-svg {
-  flex-shrink: 0;
-}
-
-.commit-items {
-  flex: 1;
-  min-width: 200px;
-  overflow: hidden;
-}
-
 .commit-item {
-  display: flex;
-  align-items: center;
-  padding: 0 6px 0 0;
-  cursor: pointer;
-  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 12px;
 }
 
 .commit-item:hover {
   background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
 }
 
-.commit-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.commit-message {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-bottom: 2px;
-}
-
-.commit-meta {
+.commit-header {
   display: flex;
+  align-items: center;
   gap: 8px;
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground, #858585);
+  margin-bottom: 4px;
 }
 
 .commit-hash {
   font-family: var(--vscode-editor-font-family, monospace);
+  color: var(--vscode-textLink-foreground, #3794ff);
+  font-size: 11px;
 }
 
-.commit-branch {
-  color: var(--vscode-textLink-foreground, #3794ff);
-  font-size: 10px;
-  padding: 1px 4px;
-  background: var(--vscode-badge-background, #4d4d4d);
-  border-radius: 3px;
+.commit-author {
+  color: var(--vscode-descriptionForeground, #858585);
+  font-size: 11px;
+  margin-left: auto;
+}
+
+.commit-date {
+  color: var(--vscode-descriptionForeground, #858585);
+  font-size: 11px;
+}
+
+.commit-message {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  line-height: 1.4;
 }
 
 .loading {

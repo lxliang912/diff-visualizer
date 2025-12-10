@@ -88,26 +88,29 @@ export class GitService {
   }
 
   async getCommitHistory(baseBranch: string, targetBranch: string): Promise<CommitInfo[]> {
-    const log = await this.git.log({
-      from: baseBranch,
-      to: targetBranch,
-      format: {
-        hash: '%H',
-        parents: '%P',
-        message: '%s',
-        author_name: '%an',
-        date: '%ai'
-      }
+    const result = await this.git.raw([
+      'log',
+      `${baseBranch}..${targetBranch}`,
+      '--format=%H|%an|%aI|%s',
+      '--'
+    ]);
+    
+    if (!result.trim()) {
+      return [];
+    }
+    
+    return result.trim().split('\n').map(line => {
+      const [hash, author, date, ...messageParts] = line.split('|');
+      const message = messageParts.join('|');
+      return {
+        hash,
+        shortHash: hash.substring(0, 7),
+        message,
+        author,
+        date: this.formatDate(date),
+        parents: []
+      };
     });
-
-    return log.all.map((commit: any) => ({
-      hash: commit.hash,
-      shortHash: commit.hash.substring(0, 7),
-      message: commit.message,
-      author: commit.author_name,
-      date: this.formatDate(commit.date),
-      parents: commit.parents ? commit.parents.split(' ').filter((p: string) => p) : []
-    }));
   }
 
   async getFileContent(branch: string, filePath: string): Promise<string> {
@@ -125,18 +128,13 @@ export class GitService {
 
   private formatDate(dateStr: string): string {
     const date = new Date(dateStr);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) {
-      return 'today';
-    } else if (diffDays === 1) {
-      return 'yesterday';
-    } else if (diffDays < 7) {
-      return `${diffDays}d`;
-    } else {
-      return date.toLocaleDateString();
-    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
 }
 

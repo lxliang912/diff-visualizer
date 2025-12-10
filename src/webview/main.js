@@ -257,7 +257,7 @@ function collectAllFolders(files) {
 
 function renderFileTree(files, totalStats, isRestore = false) {
   if (!isRestore) {
-    state.diffFiles = files;
+  state.diffFiles = files;
     state.totalStats = totalStats;
   }
   
@@ -366,131 +366,22 @@ function renderTreeNode(node, container, path, depth) {
   });
 }
 
-function calculateGraph(commits) {
-  const lanes = [];
-  const commitLanes = new Map();
-  const commitIndex = new Map();
-  
-  commits.forEach((c, i) => commitIndex.set(c.hash, i));
-  
-  commits.forEach((commit, index) => {
-    let lane = -1;
-    
-    for (let i = 0; i < lanes.length; i++) {
-      if (lanes[i] === null || lanes[i] === commit.hash) {
-        lane = i;
-        break;
-      }
-    }
-    
-    if (lane === -1) {
-      lane = lanes.length;
-      lanes.push(null);
-    }
-    
-    commitLanes.set(commit.hash, lane);
-    
-    if (commit.parents && commit.parents.length > 0) {
-      lanes[lane] = commit.parents[0];
-      
-      for (let i = 1; i < commit.parents.length; i++) {
-        let mergeLane = -1;
-        for (let j = 0; j < lanes.length; j++) {
-          if (lanes[j] === null) {
-            mergeLane = j;
-            break;
-          }
-        }
-        if (mergeLane === -1) {
-          mergeLane = lanes.length;
-          lanes.push(null);
-        }
-        lanes[mergeLane] = commit.parents[i];
-      }
-    } else {
-      lanes[lane] = null;
-    }
-    
-    for (let i = 0; i < lanes.length; i++) {
-      if (lanes[i] && !commitIndex.has(lanes[i])) {
-        lanes[i] = null;
-      }
-    }
-  });
-  
-  return { commitLanes, maxLanes: lanes.length };
-}
-
 function renderCommits(commits) {
   if (commits.length === 0) {
     commitList.innerHTML = '<div class="empty-state">No commits to display</div>';
     return;
   }
   
-  const { commitLanes, maxLanes } = calculateGraph(commits);
-  const colors = ['#3794ff', '#89d185', '#e9b93e', '#f48771', '#c586c0', '#4ec9b0'];
-  const laneWidth = 16;
-  const rowHeight = 50;
-  const graphWidth = Math.max(maxLanes * laneWidth + 10, 30);
-  
-  const commitIndex = new Map();
-  commits.forEach((c, i) => commitIndex.set(c.hash, i));
-  
-  let svgPaths = '';
-  commits.forEach((commit, index) => {
-    const lane = commitLanes.get(commit.hash);
-    const x = 8 + lane * laneWidth;
-    const y = index * rowHeight + rowHeight / 2;
-    const color = colors[lane % colors.length];
-    
-    if (commit.parents) {
-      commit.parents.forEach((parentHash, pIndex) => {
-        const parentIndex = commitIndex.get(parentHash);
-        if (parentIndex !== undefined) {
-          const parentLane = commitLanes.get(parentHash);
-          const px = 8 + parentLane * laneWidth;
-          const py = parentIndex * rowHeight + rowHeight / 2;
-          const pathColor = pIndex === 0 ? color : colors[parentLane % colors.length];
-          
-          if (lane === parentLane) {
-            svgPaths += `<path d="M ${x} ${y} L ${px} ${py}" stroke="${pathColor}" stroke-width="2" fill="none"/>`;
-          } else {
-            const midY = y + rowHeight / 2;
-            svgPaths += `<path d="M ${x} ${y} L ${x} ${midY} Q ${x} ${midY + 10} ${px} ${midY + 10} L ${px} ${py}" stroke="${pathColor}" stroke-width="2" fill="none"/>`;
-          }
-        }
-      });
-    }
-    
-    svgPaths += `<circle cx="${x}" cy="${y}" r="4" fill="${color}"/>`;
-  });
-  
-  const svgHeight = commits.length * rowHeight;
-  
-  commitList.innerHTML = `
-    <div class="commit-graph-container">
-      <svg class="commit-graph-svg" width="${graphWidth}" height="${svgHeight}">
-        ${svgPaths}
-      </svg>
-      <div class="commit-items">
-        ${commits.map((commit, index) => {
-          const lane = commitLanes.get(commit.hash);
-          return `
-            <div class="commit-item" data-hash="${commit.hash}" style="height: ${rowHeight}px;">
-              <div class="commit-content">
-                <div class="commit-message">${escapeHtml(commit.message)}</div>
-                <div class="commit-meta">
-                  <span class="commit-author">${escapeHtml(commit.author)}</span>
-                  <span class="commit-date">${commit.date}</span>
-                  <span class="commit-hash">${commit.shortHash}</span>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
+  commitList.innerHTML = commits.map(commit => `
+    <div class="commit-item" data-hash="${commit.hash}">
+      <div class="commit-header">
+        <span class="commit-hash">${commit.shortHash}</span>
+          <span class="commit-date">${commit.date}</span>
+          <span class="commit-author">${escapeHtml(commit.author)}</span>
       </div>
+      <div class="commit-message">${escapeHtml(commit.message)}</div>
     </div>
-  `;
+  `).join('');
 }
 
 function escapeHtml(text) {
