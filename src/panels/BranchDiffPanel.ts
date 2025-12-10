@@ -126,27 +126,28 @@ export class BranchDiffPanel {
 
     const workspaceRoot = this._gitService.getWorkspaceRoot();
     
-    const baseUri = vscode.Uri.parse(`git-diff:${baseBranch}/${filePath}`).with({
+    const baseUri = vscode.Uri.from({
       scheme: 'git-show',
+      path: `/${baseBranch}/${filePath}`,
       query: JSON.stringify({ branch: baseBranch, path: filePath, root: workspaceRoot })
     });
     
-    const targetUri = vscode.Uri.parse(`git-diff:${targetBranch}/${filePath}`).with({
+    const targetUri = vscode.Uri.from({
       scheme: 'git-show',
+      path: `/${targetBranch}/${filePath}`,
       query: JSON.stringify({ branch: targetBranch, path: filePath, root: workspaceRoot })
     });
 
     const title = `${path.basename(filePath)} (${baseBranch} ↔ ${targetBranch})`;
     
+    console.log('Opening diff with:');
+    console.log('baseUri:', baseUri.toString());
+    console.log('targetUri:', targetUri.toString());
+    
     try {
-      const baseContent = await this._gitService.getFileContent(baseBranch, filePath);
-      const targetContent = await this._gitService.getFileContent(targetBranch, filePath);
-      
-      const baseDoc = await vscode.workspace.openTextDocument({ content: baseContent, language: this._getLanguage(filePath) });
-      const targetDoc = await vscode.workspace.openTextDocument({ content: targetContent, language: this._getLanguage(filePath) });
-      
-      await vscode.commands.executeCommand('vscode.diff', baseDoc.uri, targetDoc.uri, title);
+      await vscode.commands.executeCommand('vscode.diff', baseUri, targetUri, title);
     } catch (error) {
+      console.error('Diff error:', error);
       vscode.window.showErrorMessage(`Failed to open diff: ${error}`);
     }
   }

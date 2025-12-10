@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "publisher": "lixiaoliang",
   "license": "MIT",
-  "icon": "img_diff_visualizer.png",
+  "icon": "./images/logo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/lxliang912/diff-visualizer"

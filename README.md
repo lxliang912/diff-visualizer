@@ -22,4 +22,4 @@ In Cursor 1.7 and earlier versions, there was a built-in feature to compare bran
 
 ## Screenshot
 
-![screenshot](https://raw.githubusercontent.com/lxliang912/diff-visualizer/main/screenshot.png)
+![screenshot](./images/img_example.png)
