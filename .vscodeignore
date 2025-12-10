@@ -1,0 +1,7 @@
+.vscode/**
+src/**
+!src/webview/**
+.gitignore
+*.vsix
+tsconfig.json
+package-lock.json

@@ -1,0 +1,69 @@
+{
+  "name": "diff-visualizer",
+  "displayName": "Diff Visualizer",
+  "description": "Visualize and explore file changes, commit history between Git branches with an intuitive interface",
+  "version": "0.0.1",
+  "publisher": "lixiaoliang",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lxliang912/diff-visualizer"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:branchDiff.panel",
+    "onCommand:branchDiff.compare"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "branchDiff.compare",
+        "title": "Diff Visualizer: Compare Branches"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "branch-diff",
+          "title": "Diff Visualizer",
+          "icon": "$(git-compare)"
+        }
+      ]
+    },
+    "views": {
+      "branch-diff": [
+        {
+          "type": "webview",
+          "id": "branchDiff.panel",
+          "name": ""
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.x",
+    "@typescript-eslint/parser": "^6.x",
+    "eslint": "^8.x",
+    "typescript": "^5.x"
+  },
+  "dependencies": {
+    "simple-git": "^3.22.0"
+  }
+}

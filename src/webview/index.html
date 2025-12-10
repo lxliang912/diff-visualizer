@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+  <title>Branch Diff</title>
+  <style>/* INJECT_CSS */</style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="branch-selector">
+        <select id="baseBranch" class="branch-select">
+          <option value="">Select base branch</option>
+        </select>
+        <span class="arrow">←</span>
+        <select id="targetBranch" class="branch-select">
+          <option value="">Select target branch</option>
+        </select>
+      </div>
+      <div class="header-actions">
+        <button id="refreshBtn" class="icon-btn" title="Refresh">
+          <span class="icon">↻</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="changes-section">
+        <div class="section-header collapsible" id="changesHeader">
+          <span id="changesCount">0 Changes</span>
+          <div class="stats">
+            <span class="additions" id="totalAdditions">+0</span>
+            <span class="deletions" id="totalDeletions">-0</span>
+          </div>
+        </div>
+        <div id="changesBody" class="section-body">
+          <div id="fileTree" class="file-tree">
+            <div class="empty-state">Select branches to compare</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="resizer" id="resizer"></div>
+
+      <section class="commits-section">
+        <div class="section-header collapsible" id="commitsHeader">
+          <span>COMMIT HISTORY</span>
+        </div>
+        <div id="commitsBody" class="section-body">
+          <div class="commit-search">
+            <input type="text" id="commitSearch" placeholder="Search commits or authors...">
+          </div>
+          <div id="commitList" class="commit-list">
+            <div class="empty-state">No commits to display</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>/* INJECT_JS */</script>
+</body>
+</html>
+
