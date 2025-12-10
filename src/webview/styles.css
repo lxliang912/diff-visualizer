@@ -209,7 +209,7 @@ body {
 .tree-item {
   display: flex;
   align-items: center;
-  padding: 4px 6px;
+  padding: 2px 6px;
   cursor: pointer;
   user-select: none;
   position: relative;
