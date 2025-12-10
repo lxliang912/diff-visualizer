@@ -43,17 +43,22 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .branch-select {
-  padding: 6px 12px;
+  padding: 6px 8px;
   border-radius: 4px;
   border: 1px solid var(--vscode-input-border, #3c3c3c);
   background: var(--vscode-input-background, #3c3c3c);
   color: var(--vscode-input-foreground, #cccccc);
   font-size: 12px;
-  width: 180px;
+  flex: 1;
+  min-width: 60px;
   cursor: pointer;
+  text-overflow: ellipsis;
 }
 
 .branch-select:focus {
@@ -69,6 +74,8 @@ body {
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
 .icon-btn {
