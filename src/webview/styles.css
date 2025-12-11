@@ -180,11 +180,11 @@ body {
 }
 
 .additions {
-  color: var(--vscode-gitDecoration-addedResourceForeground, #81b88b);
+  color: #5fb582;
 }
 
 .deletions {
-  color: var(--vscode-gitDecoration-deletedResourceForeground, #c74e39);
+  color: #d94444;
 }
 
 .file-tree {
@@ -236,6 +236,23 @@ body {
 
 .tree-item.file .icon {
   font-size: 11px;
+  font-weight:500;
+}
+
+.tree-item.file .icon.status-added {
+  color: #5fb582;
+}
+
+.tree-item.file .icon.status-modified {
+  color: #b89600;
+}
+
+.tree-item.file .icon.status-deleted {
+  color: #d94444;
+}
+
+.tree-item.file .icon.status-renamed {
+  color: #2a80e0;
 }
 
 .tree-guide {
@@ -247,17 +264,21 @@ body {
 }
 
 .tree-item .name {
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tree-item.file .icon {
+  margin-left: 4px;
 }
 
 .tree-item .file-stats {
   display: flex;
   gap: 4px;
   font-size: 11px;
-  margin-left: 8px;
+  margin-left: auto;
+  padding-left: 8px;
 }
 
 .folder-children {

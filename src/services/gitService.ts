@@ -64,9 +64,13 @@ export class GitService {
     
     const files: DiffFile[] = diffSummary.files.map(file => {
       let status: DiffFile['status'] = 'modified';
-      const filePath = 'file' in file ? file.file : '';
+      let filePath = 'file' in file ? file.file : '';
       
-      if ('insertions' in file && file.insertions > 0 && ('deletions' in file && file.deletions === 0)) {
+      const isRenamed = filePath.includes('{') && filePath.includes(' => ') && filePath.includes('}');
+      if (isRenamed) {
+        filePath = this.parseRenamedPath(filePath);
+        status = 'renamed';
+      } else if ('insertions' in file && file.insertions > 0 && ('deletions' in file && file.deletions === 0)) {
         status = 'added';
       } else if ('deletions' in file && file.deletions > 0 && ('insertions' in file && file.insertions === 0)) {
         status = 'deleted';
@@ -85,6 +89,11 @@ export class GitService {
       totalAdditions: diffSummary.insertions,
       totalDeletions: diffSummary.deletions
     };
+  }
+
+  private parseRenamedPath(filePath: string): string {
+    const regex = /\{([^}]*) => ([^}]*)\}/g;
+    return filePath.replace(regex, (_, oldPart, newPart) => newPart);
   }
 
   async getCommitHistory(baseBranch: string, targetBranch: string): Promise<CommitInfo[]> {

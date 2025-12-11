@@ -336,16 +336,16 @@ function renderTreeNode(node, container, path, depth) {
       fileEl.style.paddingLeft = `${indent}px`;
       
       const iconMap = {
-        added: '+',
-        modified: '✎',
-        deleted: '-',
-        renamed: '→'
+        added: 'A',
+        modified: 'M',
+        deleted: 'D',
+        renamed: 'R'
       };
       
       fileEl.innerHTML = `
-        ${generateGuides(depth - 1)}
-        <span class="icon">${iconMap[item.data.status] || '•'}</span>
+        ${generateGuides(depth)}
         <span class="name">${key}</span>
+        <span class="icon status-${item.data.status}">${iconMap[item.data.status] || '•'}</span>
         <span class="file-stats">
           ${item.data.additions > 0 ? `<span class="additions">+${item.data.additions}</span>` : ''}
           ${item.data.deletions > 0 ? `<span class="deletions">-${item.data.deletions}</span>` : ''}
