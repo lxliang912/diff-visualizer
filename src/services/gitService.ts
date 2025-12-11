@@ -96,11 +96,30 @@ export class GitService {
     return filePath.replace(regex, (_, oldPart, newPart) => newPart);
   }
 
+  private shouldFormatAsList(parts: string[]): boolean {
+    if (parts.length < 2) return false;
+    
+    const firstPart = parts[0].trim();
+    const restParts = parts.slice(1);
+    
+    if (firstPart.length > 100) return false;
+    
+    const restAllHaveContent = restParts.every(part => part.trim().length > 5);
+    if (!restAllHaveContent) return false;
+    
+    const restAllLookLikeItems = restParts.every(part => {
+      const trimmed = part.trim();
+      return trimmed.length > 10 && (trimmed.includes('，') || trimmed.includes('。') || trimmed.includes('、') || trimmed.length > 20);
+    });
+    
+    return restAllLookLikeItems;
+  }
+
   async getCommitHistory(baseBranch: string, targetBranch: string): Promise<CommitInfo[]> {
     const result = await this.git.raw([
       'log',
       `${baseBranch}..${targetBranch}`,
-      '--format=%H|%an|%aI|%s',
+      '--format=%H%n%an%n%aI%n%s%n%b%n---COMMIT-SEPARATOR---',
       '--'
     ]);
     
@@ -108,18 +127,63 @@ export class GitService {
       return [];
     }
     
-    return result.trim().split('\n').map(line => {
-      const [hash, author, date, ...messageParts] = line.split('|');
-      const message = messageParts.join('|');
-      return {
+    const commits: CommitInfo[] = [];
+    const blocks = result.trim().split('---COMMIT-SEPARATOR---');
+    
+    for (const block of blocks) {
+      const lines = block.trim().split('\n');
+      if (lines.length < 4) continue;
+      
+      const hash = lines[0].trim();
+      const author = lines[1].trim();
+      const date = lines[2].trim();
+      let subject = lines[3].trim();
+      let body = lines.slice(4).join('\n').trim();
+      
+      let message = subject;
+      
+      if (body) {
+        const hasNewlines = body.includes('\n');
+        
+        if (hasNewlines) {
+          message = `${subject}\n${body}`;
+        } else {
+          const bodyParts = body.split(' - ').filter(part => part.trim());
+          if (bodyParts.length > 1 && this.shouldFormatAsList(bodyParts)) {
+            const formattedBody = bodyParts
+              .map(part => {
+                const trimmed = part.trim();
+                return trimmed.startsWith('-') ? trimmed : `- ${trimmed}`;
+              })
+              .join('\n');
+            message = `${subject}\n${formattedBody}`;
+          } else {
+            message = `${subject}\n${body}`;
+          }
+        }
+      } else {
+        const subjectParts = subject.split(' - ').filter(part => part.trim());
+        if (subjectParts.length > 1 && this.shouldFormatAsList(subjectParts)) {
+          subject = subjectParts[0];
+          const bodyParts = subjectParts.slice(1).map(part => part.trim());
+          const formattedBody = bodyParts
+            .map(part => part.startsWith('-') ? part : `- ${part}`)
+            .join('\n');
+          message = `${subject}\n${formattedBody}`;
+        }
+      }
+      
+      commits.push({
         hash,
         shortHash: hash.substring(0, 7),
-        message,
+        message: message.trim(),
         author,
         date: this.formatDate(date),
         parents: []
-      };
-    });
+      });
+    }
+    
+    return commits;
   }
 
   async getFileContent(branch: string, filePath: string): Promise<string> {
