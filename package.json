@@ -2,7 +2,7 @@
   "name": "diff-visualizer",
   "displayName": "Diff Visualizer",
   "description": "Visualize and explore file changes, commit history between Git branches with an intuitive interface",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "lixiaoliang",
   "license": "MIT",
   "icon": "./images/logo.png",

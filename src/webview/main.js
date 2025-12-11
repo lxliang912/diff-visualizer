@@ -345,11 +345,11 @@ function renderTreeNode(node, container, path, depth) {
       fileEl.innerHTML = `
         ${generateGuides(depth)}
         <span class="name">${key}</span>
-        <span class="icon status-${item.data.status}">${iconMap[item.data.status] || '•'}</span>
         <span class="file-stats">
           ${item.data.additions > 0 ? `<span class="additions">+${item.data.additions}</span>` : ''}
           ${item.data.deletions > 0 ? `<span class="deletions">-${item.data.deletions}</span>` : ''}
         </span>
+        <span class="icon status-${item.data.status}">${iconMap[item.data.status] || '•'}</span>
       `;
       
       fileEl.addEventListener('click', () => {

@@ -240,19 +240,19 @@ body {
 }
 
 .tree-item.file .icon.status-added {
-  color: #5fb582;
+  color: #498b63;
 }
 
 .tree-item.file .icon.status-modified {
-  color: #b89600;
+  color: #8c7200;
 }
 
 .tree-item.file .icon.status-deleted {
-  color: #d94444;
+  color: #a73434;
 }
 
 .tree-item.file .icon.status-renamed {
-  color: #2a80e0;
+  color: #2062ab;
 }
 
 .tree-guide {
@@ -278,7 +278,7 @@ body {
   gap: 4px;
   font-size: 11px;
   margin-left: auto;
-  padding-left: 8px;
+  padding-right: 4px;
 }
 
 .folder-children {
