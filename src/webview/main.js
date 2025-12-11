@@ -44,6 +44,55 @@ function init() {
     toggleSection('commitsHeader', 'commitsBody');
   });
   
+  fileTree.addEventListener('click', (e) => {
+    const target = e.target.closest('.tree-item');
+    if (!target) return;
+    
+    const type = target.dataset.type;
+    const path = target.dataset.path;
+    
+    if (type === 'folder') {
+      e.stopPropagation();
+      const icon = target.querySelector('.icon');
+      const childrenEl = target.nextElementSibling;
+      
+      if (state.expandedFolders.has(path)) {
+        state.expandedFolders.delete(path);
+        icon.textContent = '▶';
+        childrenEl.classList.remove('expanded');
+      } else {
+        state.expandedFolders.add(path);
+        icon.textContent = '▼';
+        childrenEl.classList.add('expanded');
+      }
+      saveState();
+    } else if (type === 'file') {
+      const filePath = path;
+      vscode.postMessage({
+        command: 'openDiff',
+        baseBranch: state.baseBranch,
+        targetBranch: state.targetBranch,
+        filePath: filePath
+      });
+    }
+  });
+  
+  fileTree.addEventListener('click', (e) => {
+    const openFileBtn = e.target.closest('.open-file-btn');
+    if (!openFileBtn) return;
+    
+    e.stopPropagation();
+    const fileEl = openFileBtn.closest('.tree-item.file');
+    if (fileEl) {
+      const filePath = fileEl.dataset.path;
+      vscode.postMessage({
+        command: 'openFile',
+        filePath: filePath,
+        targetBranch: state.targetBranch
+      });
+    }
+  });
+  
   initResizer();
   
   if (previousState && previousState.branches && previousState.branches.local.length > 0) {
@@ -278,7 +327,10 @@ function renderFileTree(files, totalStats, isRestore = false) {
   
   const tree = buildFileTree(files);
   fileTree.innerHTML = '';
-  renderTreeNode(tree, fileTree, '', 0);
+  
+  const fragment = document.createDocumentFragment();
+  renderTreeNode(tree, fragment, '', 0);
+  fileTree.appendChild(fragment);
 }
 
 function renderTreeNode(node, container, path, depth) {
@@ -291,12 +343,11 @@ function renderTreeNode(node, container, path, depth) {
   
   const indent = 16 + depth * 16;
   
-  const generateGuides = (d) => {
-    let guides = '';
-    for (let i = 0; i < d; i++) {
-      guides += `<span class="tree-guide" style="left: ${21 + i * 16}px"></span>`;
-    }
-    return guides;
+  const createGuide = (i) => {
+    const guide = document.createElement('span');
+    guide.className = 'tree-guide';
+    guide.style.left = `${21 + i * 16}px`;
+    return guide;
   };
   
   sortedKeys.forEach(key => {
@@ -306,25 +357,25 @@ function renderTreeNode(node, container, path, depth) {
       const folderEl = document.createElement('div');
       folderEl.className = 'tree-item folder';
       folderEl.style.paddingLeft = `${indent}px`;
-      folderEl.innerHTML = `
-        ${generateGuides(depth)}
-        <span class="icon">${state.expandedFolders.has(fullPath) ? '▼' : '▶'}</span>
-        <span class="name">${key}</span>
-      `;
+      folderEl.dataset.path = fullPath;
+      folderEl.dataset.type = 'folder';
+      
+      for (let i = 0; i < depth; i++) {
+        folderEl.appendChild(createGuide(i));
+      }
+      
+      const icon = document.createElement('span');
+      icon.className = 'icon';
+      icon.textContent = state.expandedFolders.has(fullPath) ? '▼' : '▶';
+      folderEl.appendChild(icon);
+      
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = key;
+      folderEl.appendChild(name);
       
       const childrenEl = document.createElement('div');
       childrenEl.className = `folder-children ${state.expandedFolders.has(fullPath) ? 'expanded' : ''}`;
-      
-      folderEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (state.expandedFolders.has(fullPath)) {
-          state.expandedFolders.delete(fullPath);
-        } else {
-          state.expandedFolders.add(fullPath);
-        }
-        folderEl.querySelector('.icon').textContent = state.expandedFolders.has(fullPath) ? '▼' : '▶';
-        childrenEl.classList.toggle('expanded');
-      });
       
       container.appendChild(folderEl);
       container.appendChild(childrenEl);
@@ -334,6 +385,20 @@ function renderTreeNode(node, container, path, depth) {
       const fileEl = document.createElement('div');
       fileEl.className = 'tree-item file';
       fileEl.style.paddingLeft = `${indent}px`;
+      fileEl.dataset.path = item.data.path;
+      fileEl.dataset.type = 'file';
+      
+      for (let i = 0; i < depth; i++) {
+        fileEl.appendChild(createGuide(i));
+      }
+      
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = key;
+      fileEl.appendChild(name);
+      
+      const fileActions = document.createElement('span');
+      fileActions.className = 'file-actions';
       
       const iconMap = {
         added: 'A',
@@ -342,24 +407,36 @@ function renderTreeNode(node, container, path, depth) {
         renamed: 'R'
       };
       
-      fileEl.innerHTML = `
-        ${generateGuides(depth)}
-        <span class="name">${key}</span>
-        <span class="file-stats">
-          ${item.data.additions > 0 ? `<span class="additions">+${item.data.additions}</span>` : ''}
-          ${item.data.deletions > 0 ? `<span class="deletions">-${item.data.deletions}</span>` : ''}
-        </span>
-        <span class="icon status-${item.data.status}">${iconMap[item.data.status] || '•'}</span>
-      `;
+      const isDeleted = item.data.status === 'deleted';
+      if (!isDeleted) {
+        const openFileBtn = document.createElement('span');
+        openFileBtn.className = 'open-file-btn';
+        openFileBtn.title = '打开文件';
+        openFileBtn.textContent = '✎';
+        fileActions.appendChild(openFileBtn);
+      }
       
-      fileEl.addEventListener('click', () => {
-        vscode.postMessage({
-          command: 'openDiff',
-          baseBranch: state.baseBranch,
-          targetBranch: state.targetBranch,
-          filePath: item.data.path
-        });
-      });
+      const fileStats = document.createElement('span');
+      fileStats.className = 'file-stats';
+      if (item.data.additions > 0) {
+        const additions = document.createElement('span');
+        additions.className = 'additions';
+        additions.textContent = `+${item.data.additions}`;
+        fileStats.appendChild(additions);
+      }
+      if (item.data.deletions > 0) {
+        const deletions = document.createElement('span');
+        deletions.className = 'deletions';
+        deletions.textContent = `-${item.data.deletions}`;
+        fileStats.appendChild(deletions);
+      }
+      fileActions.appendChild(fileStats);
+      fileEl.appendChild(fileActions);
+      
+      const statusIcon = document.createElement('span');
+      statusIcon.className = `icon status-${item.data.status}`;
+      statusIcon.textContent = iconMap[item.data.status] || '•';
+      fileEl.appendChild(statusIcon);
       
       container.appendChild(fileEl);
     }
@@ -372,16 +449,42 @@ function renderCommits(commits) {
     return;
   }
   
-  commitList.innerHTML = commits.map(commit => `
-    <div class="commit-item" data-hash="${commit.hash}">
-      <div class="commit-header">
-        <span class="commit-hash">${commit.shortHash}</span>
-          <span class="commit-date">${commit.date}</span>
-          <span class="commit-author">${escapeHtml(commit.author)}</span>
-      </div>
-      <div class="commit-message">${escapeHtml(commit.message)}</div>
-    </div>
-  `).join('');
+  const fragment = document.createDocumentFragment();
+  commits.forEach(commit => {
+    const item = document.createElement('div');
+    item.className = 'commit-item';
+    item.dataset.hash = commit.hash;
+    
+    const header = document.createElement('div');
+    header.className = 'commit-header';
+    
+    const hash = document.createElement('span');
+    hash.className = 'commit-hash';
+    hash.textContent = commit.shortHash;
+    header.appendChild(hash);
+    
+    const date = document.createElement('span');
+    date.className = 'commit-date';
+    date.textContent = commit.date;
+    header.appendChild(date);
+    
+    const author = document.createElement('span');
+    author.className = 'commit-author';
+    author.textContent = commit.author;
+    header.appendChild(author);
+    
+    item.appendChild(header);
+    
+    const message = document.createElement('div');
+    message.className = 'commit-message';
+    message.textContent = commit.message;
+    item.appendChild(message);
+    
+    fragment.appendChild(item);
+  });
+  
+  commitList.innerHTML = '';
+  commitList.appendChild(fragment);
 }
 
 function escapeHtml(text) {

@@ -27,7 +27,7 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  padding-bottom: 6px;
+  padding-bottom: 5px;
 }
 
 .header {
@@ -274,12 +274,38 @@ body {
   margin-left: 4px;
 }
 
+.tree-item .file-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding-right: 4px;
+}
+
 .tree-item .file-stats {
   display: flex;
   gap: 4px;
   font-size: 11px;
-  margin-left: auto;
-  padding-right: 4px;
+}
+
+.tree-item .open-file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  opacity: 0.6;
+  color: var(--vscode-foreground, #cccccc);
+  border-radius: 3px;
+  transition: opacity 0.2s, background-color 0.2s;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.tree-item .open-file-btn:hover {
+  opacity: 1;
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
 }
 
 .folder-children {

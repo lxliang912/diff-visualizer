@@ -51,6 +51,9 @@ export class BranchDiffViewProvider implements vscode.WebviewViewProvider {
       case 'openDiff':
         await this._openDiffEditor(message.baseBranch, message.targetBranch, message.filePath);
         break;
+      case 'openFile':
+        await this._openFile(message.filePath, message.targetBranch);
+        break;
       case 'refresh':
         await this._sendBranches();
         break;
@@ -120,6 +123,20 @@ export class BranchDiffViewProvider implements vscode.WebviewViewProvider {
       await vscode.commands.executeCommand('vscode.diff', baseUri, targetUri, title);
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to open diff: ${error}`);
+    }
+  }
+
+  private async _openFile(filePath: string, targetBranch: string) {
+    if (!this._gitService) { return; }
+
+    const workspaceRoot = this._gitService.getWorkspaceRoot();
+    const fileUri = vscode.Uri.joinPath(vscode.Uri.file(workspaceRoot), filePath);
+    
+    try {
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      await vscode.window.showTextDocument(document);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to open file: ${error}`);
     }
   }
 
