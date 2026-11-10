@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { GitService, DiffFile, CommitInfo, DiffResult } from '../services/gitService';
+import { GitService } from '../services/gitService';
 
 export class BranchDiffPanel {
   public static currentPanel: BranchDiffPanel | undefined;
@@ -52,6 +52,26 @@ export class BranchDiffPanel {
       null,
       this._disposables
     );
+
+    const repoEvents = require('../services/repoEvents');
+    this._disposables.push(
+      repoEvents.onDidChange(() => {
+        this._postMessage({ command: 'repoChanged' });
+      })
+    );
+
+    const sendOpenFiles = () => this._sendOpenFiles();
+    this._disposables.push(vscode.window.tabGroups.onDidChangeTabs(sendOpenFiles));
+    this._disposables.push(vscode.window.onDidChangeActiveTextEditor(sendOpenFiles));
+    this._panel.onDidChangeViewState(
+      () => {
+        if (this._panel.visible) {
+          sendOpenFiles();
+        }
+      },
+      null,
+      this._disposables
+    );
   }
 
   private _initGitService() {
@@ -74,6 +94,14 @@ export class BranchDiffPanel {
         break;
       case 'openDiff':
         await this._openDiffEditor(message.baseBranch, message.targetBranch, message.filePath);
+        this._sendOpenFiles();
+        break;
+      case 'openFile':
+        await this._openFile(message.filePath, message.targetBranch);
+        this._sendOpenFiles();
+        break;
+      case 'getOpenFiles':
+        this._sendOpenFiles();
         break;
       case 'refresh':
         await this._sendBranches();
@@ -83,7 +111,7 @@ export class BranchDiffPanel {
 
   private async _sendBranches() {
     if (!this._gitService) {
-      this._postMessage({ command: 'error', message: 'No workspace folder found' });
+      this._postMessage({ command: 'error', area: 'branches', message: 'No workspace folder found' });
       return;
     }
 
@@ -95,7 +123,7 @@ export class BranchDiffPanel {
         data: { ...branches, current: currentBranch }
       });
     } catch (error) {
-      this._postMessage({ command: 'error', message: `Failed to get branches: ${error}` });
+      this._postMessage({ command: 'error', area: 'branches', message: `Failed to get branches: ${error}` });
     }
   }
 
@@ -106,7 +134,7 @@ export class BranchDiffPanel {
       const diff = await this._gitService.getDiffFiles(baseBranch, targetBranch);
       this._postMessage({ command: 'diff', data: diff });
     } catch (error) {
-      this._postMessage({ command: 'error', message: `Failed to get diff: ${error}` });
+      this._postMessage({ command: 'error', area: 'diff', message: `Failed to get diff: ${error}` });
     }
   }
 
@@ -117,7 +145,7 @@ export class BranchDiffPanel {
       const commits = await this._gitService.getCommitHistory(baseBranch, targetBranch);
       this._postMessage({ command: 'commits', data: commits });
     } catch (error) {
-      this._postMessage({ command: 'error', message: `Failed to get commits: ${error}` });
+      this._postMessage({ command: 'error', area: 'commits', message: `Failed to get commits: ${error}` });
     }
   }
 
@@ -125,54 +153,60 @@ export class BranchDiffPanel {
     if (!this._gitService) { return; }
 
     const workspaceRoot = this._gitService.getWorkspaceRoot();
-    
+    const useWorkingTree = await this._gitService.shouldUseWorkingTree(targetBranch);
+
     const baseUri = vscode.Uri.from({
       scheme: 'git-show',
       path: `/${baseBranch}/${filePath}`,
       query: JSON.stringify({ branch: baseBranch, path: filePath, root: workspaceRoot })
     });
-    
-    const targetUri = vscode.Uri.from({
-      scheme: 'git-show',
-      path: `/${targetBranch}/${filePath}`,
-      query: JSON.stringify({ branch: targetBranch, path: filePath, root: workspaceRoot })
-    });
 
-    const title = `${path.basename(filePath)} (${baseBranch} ↔ ${targetBranch})`;
-    
-    console.log('Opening diff with:');
-    console.log('baseUri:', baseUri.toString());
-    console.log('targetUri:', targetUri.toString());
-    
+    const absPath = path.join(workspaceRoot, filePath);
+    const targetBranchName = useWorkingTree ? '__worktree__' : targetBranch;
+    const targetUri = useWorkingTree && fs.existsSync(absPath)
+      ? vscode.Uri.file(absPath)
+      : vscode.Uri.from({
+          scheme: 'git-show',
+          path: `/${targetBranchName}/${filePath}`,
+          query: JSON.stringify({
+            branch: useWorkingTree ? '__empty__' : targetBranch,
+            path: filePath,
+            root: workspaceRoot
+          })
+        });
+
+    const title = useWorkingTree
+      ? `${path.basename(filePath)} (${baseBranch} ↔ 工作区)`
+      : `${path.basename(filePath)} (${baseBranch} ↔ ${targetBranch})`;
+
     try {
       await vscode.commands.executeCommand('vscode.diff', baseUri, targetUri, title);
     } catch (error) {
-      console.error('Diff error:', error);
       vscode.window.showErrorMessage(`Failed to open diff: ${error}`);
     }
   }
 
-  private _getLanguage(filePath: string): string {
-    const ext = path.extname(filePath).toLowerCase();
-    const languageMap: Record<string, string> = {
-      '.ts': 'typescript',
-      '.tsx': 'typescriptreact',
-      '.js': 'javascript',
-      '.jsx': 'javascriptreact',
-      '.vue': 'vue',
-      '.json': 'json',
-      '.html': 'html',
-      '.css': 'css',
-      '.less': 'less',
-      '.scss': 'scss',
-      '.md': 'markdown',
-      '.py': 'python',
-      '.java': 'java',
-      '.go': 'go',
-      '.rs': 'rust',
-      '.sh': 'shellscript'
-    };
-    return languageMap[ext] || 'plaintext';
+  private async _openFile(filePath: string, targetBranch: string) {
+    if (!this._gitService) { return; }
+
+    const workspaceRoot = this._gitService.getWorkspaceRoot();
+    const fileUri = vscode.Uri.joinPath(vscode.Uri.file(workspaceRoot), filePath);
+
+    try {
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      await vscode.window.showTextDocument(document);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to open file: ${error}`);
+    }
+  }
+
+  private _sendOpenFiles() {
+    const openFiles = require('../services/openFiles');
+    const root = this._gitService ? this._gitService.getWorkspaceRoot() : '';
+    this._postMessage({
+      command: 'openFiles',
+      data: openFiles.collectOpenFilePaths(vscode, root)
+    });
   }
 
   private _postMessage(message: any) {
@@ -217,4 +251,3 @@ export class BranchDiffPanel {
     }
   }
 }
-

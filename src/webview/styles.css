@@ -103,8 +103,8 @@ body {
 .commits-section {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 30px;
+  flex: 1 1 0;
+  min-height: 72px;
   overflow: hidden;
 }
 
@@ -218,6 +218,11 @@ body {
 
 .tree-item:hover {
   background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
+}
+
+.tree-item.file.active {
+  background: var(--vscode-list-activeSelectionBackground, #094771);
+  color: var(--vscode-list-activeSelectionForeground, #ffffff);
 }
 
 .tree-item.folder {

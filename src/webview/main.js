@@ -13,6 +13,11 @@ let state = previousState ? {
   expandedFolders: new Set(),
   totalStats: { additions: 0, deletions: 0 }
 };
+state.activePath = typeof state.activePath === 'string' ? state.activePath : '';
+state.lastKnownCurrent = typeof state.lastKnownCurrent === 'string' ? state.lastKnownCurrent : '';
+
+let pendingRepoRefresh = false;
+let pendingInitialLoad = false;
 
 function saveState() {
   vscode.setState({
@@ -68,6 +73,7 @@ function init() {
       saveState();
     } else if (type === 'file') {
       const filePath = path;
+      markFileOpen(filePath);
       vscode.postMessage({
         command: 'openDiff',
         baseBranch: state.baseBranch,
@@ -85,6 +91,7 @@ function init() {
     const fileEl = openFileBtn.closest('.tree-item.file');
     if (fileEl) {
       const filePath = fileEl.dataset.path;
+      markFileOpen(filePath);
       vscode.postMessage({
         command: 'openFile',
         filePath: filePath,
@@ -101,15 +108,15 @@ function init() {
     targetBranchSelect.value = state.targetBranch;
     updateSelectTitle(baseBranchSelect);
     updateSelectTitle(targetBranchSelect);
-    if (state.diffFiles && state.diffFiles.length > 0) {
-      renderFileTree(state.diffFiles, state.totalStats || { additions: 0, deletions: 0 }, true);
-    }
-    if (state.commits && state.commits.length > 0) {
-      renderCommits(state.commits);
-    }
-  } else {
-    vscode.postMessage({ command: 'getBranches' });
   }
+  if (state.baseBranch && state.targetBranch) {
+    fileTree.innerHTML = '<div class="loading">Loading changes...</div>';
+    commitList.innerHTML = '<div class="loading">Loading commits...</div>';
+    pendingInitialLoad = true;
+  }
+  // 分支列表回填后由 branches 消息统一决定是否/按哪个分支拉 diff，避免用旧分支先请求一次
+  vscode.postMessage({ command: 'getBranches' });
+  vscode.postMessage({ command: 'getOpenFiles' });
 }
 
 function initResizer() {
@@ -175,9 +182,14 @@ function onBranchChange() {
   }
 }
 
-function loadDiff() {
-  fileTree.innerHTML = '<div class="loading">Loading changes...</div>';
-  commitList.innerHTML = '<div class="loading">Loading commits...</div>';
+function loadDiff(options) {
+  const quiet = Boolean(options && options.quiet && state.diffFiles.length > 0);
+  if (!quiet) {
+    state.diffReady = false;
+    state.commitsReady = false;
+    fileTree.innerHTML = '<div class="loading">Loading changes...</div>';
+    commitList.innerHTML = '<div class="loading">Loading commits...</div>';
+  }
   
   vscode.postMessage({
     command: 'getDiff',
@@ -304,13 +316,70 @@ function collectAllFolders(files) {
   return folders;
 }
 
+function diffUnchanged(files, totalStats) {
+  if (!state.totalStats || state.diffFiles.length !== files.length) return false;
+  if (Boolean(state.includesWorkingTree) !== Boolean(totalStats.includesWorkingTree)) return false;
+  if (state.totalStats.additions !== totalStats.additions || state.totalStats.deletions !== totalStats.deletions) return false;
+  for (let i = 0; i < files.length; i++) {
+    const current = state.diffFiles[i];
+    const next = files[i];
+    if (current.path !== next.path || current.additions !== next.additions || current.deletions !== next.deletions || current.status !== next.status) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function markFileOpen(filePath) {
+  if (!filePath) return;
+  state.activePath = filePath;
+  applyOpenFileHighlights(false);
+}
+
+function expandAncestors(filePath) {
+  const parts = String(filePath).split('/');
+  let current = '';
+  for (let i = 0; i < parts.length - 1; i++) {
+    current = current ? `${current}/${parts[i]}` : parts[i];
+    state.expandedFolders.add(current);
+    fileTree.querySelectorAll('.tree-item.folder').forEach(folderEl => {
+      if (folderEl.dataset.path !== current) return;
+      const icon = folderEl.querySelector('.icon');
+      const childrenEl = folderEl.nextElementSibling;
+      if (icon) icon.textContent = '▼';
+      if (childrenEl) childrenEl.classList.add('expanded');
+    });
+  }
+}
+
+function applyOpenFileHighlights(scrollActive) {
+  fileTree.querySelectorAll('.tree-item.file').forEach(el => {
+    const filePath = el.dataset.path || '';
+    el.classList.toggle('active', Boolean(filePath) && filePath === state.activePath);
+  });
+  if (state.activePath) expandAncestors(state.activePath);
+  if (!scrollActive || !state.activePath) return;
+  fileTree.querySelectorAll('.tree-item.file').forEach(el => {
+    if (el.dataset.path === state.activePath) {
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  });
+}
+
 function renderFileTree(files, totalStats, isRestore = false) {
+  if (!isRestore && state.diffReady && diffUnchanged(files, totalStats)) {
+    return;
+  }
   if (!isRestore) {
   state.diffFiles = files;
     state.totalStats = totalStats;
+    state.includesWorkingTree = Boolean(totalStats.includesWorkingTree);
+    state.diffReady = true;
   }
   
-  changesCount.textContent = `${files.length} Changes`;
+  changesCount.textContent = totalStats.includesWorkingTree
+    ? `${files.length} Changes · 含未提交`
+    : `${files.length} Changes`;
   totalAdditions.textContent = `+${totalStats.additions}`;
   totalDeletions.textContent = `-${totalStats.deletions}`;
   
@@ -331,6 +400,7 @@ function renderFileTree(files, totalStats, isRestore = false) {
   const fragment = document.createDocumentFragment();
   renderTreeNode(tree, fragment, '', 0);
   fileTree.appendChild(fragment);
+  applyOpenFileHighlights(false);
 }
 
 function renderTreeNode(node, container, path, depth) {
@@ -497,22 +567,67 @@ window.addEventListener('message', event => {
   const message = event.data;
   
   switch (message.command) {
-    case 'branches':
-      populateBranchSelects(message.data);
+    case 'branches': {
+      const hadSelection = Boolean(state.baseBranch && state.targetBranch);
+      const nextCurrent = message.data && message.data.current ? message.data.current : '';
+      const followedCurrent = Boolean(
+        (pendingRepoRefresh || pendingInitialLoad) &&
+        state.lastKnownCurrent &&
+        nextCurrent &&
+        nextCurrent !== state.lastKnownCurrent &&
+        state.targetBranch === state.lastKnownCurrent
+      );
+      if (followedCurrent) {
+        state.targetBranch = nextCurrent;
+      }
+      const needsRefresh = pendingRepoRefresh || pendingInitialLoad || !hadSelection;
+      pendingRepoRefresh = false;
+      pendingInitialLoad = false;
+      populateBranchSelects(message.data, true);
+      if (nextCurrent) {
+        state.lastKnownCurrent = nextCurrent;
+        saveState();
+      }
+      if (needsRefresh && state.baseBranch && state.targetBranch) {
+        loadDiff(followedCurrent ? undefined : { quiet: true });
+      }
+      break;
+    }
+    case 'openFiles': {
+      const data = message.data || {};
+      const prev = state.activePath;
+      state.activePath = data.active || '';
+      applyOpenFileHighlights(Boolean(state.activePath) && state.activePath !== prev);
+      break;
+    }
+    case 'repoChanged':
+      pendingRepoRefresh = true;
+      vscode.postMessage({ command: 'getBranches' });
       break;
     case 'diff':
       renderFileTree(message.data.files, {
         additions: message.data.totalAdditions,
-        deletions: message.data.totalDeletions
+        deletions: message.data.totalDeletions,
+        includesWorkingTree: Boolean(message.data.includesWorkingTree)
       });
       break;
-    case 'commits':
-      state.commits = message.data;
-      renderCommits(message.data);
+    case 'commits': {
+      const nextCommits = Array.isArray(message.data) ? message.data : [];
+      state.commitsReady = true;
+      state.commits = nextCommits;
+      renderCommits(nextCommits);
       saveState();
       break;
+    }
     case 'error':
       console.error(message.message);
+      if (message.area === 'diff') {
+        state.diffReady = false;
+        fileTree.innerHTML = `<div class="empty-state">${escapeHtml(message.message)}</div>`;
+      } else if (message.area === 'commits') {
+        state.commitsReady = false;
+        commitList.innerHTML = `<div class="empty-state">${escapeHtml(message.message)}</div>`;
+      }
       break;
   }
 });

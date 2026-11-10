@@ -1,5 +1,7 @@
-import simpleGit, { SimpleGit, BranchSummary, LogResult } from 'simple-git';
+import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
+import simpleGit, { SimpleGit, BranchSummary } from 'simple-git';
 
 export interface DiffFile {
   path: string;
@@ -21,6 +23,7 @@ export interface DiffResult {
   files: DiffFile[];
   totalAdditions: number;
   totalDeletions: number;
+  includesWorkingTree: boolean;
 }
 
 export class GitService {
@@ -59,13 +62,21 @@ export class GitService {
     return { local, remote };
   }
 
+  async shouldUseWorkingTree(targetBranch: string): Promise<boolean> {
+    const current = (await this.getBranches()).current;
+    return Boolean(current) && current === targetBranch;
+  }
+
   async getDiffFiles(baseBranch: string, targetBranch: string): Promise<DiffResult> {
-    const diffSummary = await this.git.diffSummary([baseBranch, targetBranch]);
-    
+    const includeWorkingTree = await this.shouldUseWorkingTree(targetBranch);
+    const diffSummary = await this.git.diffSummary(
+      includeWorkingTree ? [baseBranch] : [baseBranch, targetBranch]
+    );
+
     const files: DiffFile[] = diffSummary.files.map(file => {
       let status: DiffFile['status'] = 'modified';
       let filePath = 'file' in file ? file.file : '';
-      
+
       const isRenamed = filePath.includes('{') && filePath.includes(' => ') && filePath.includes('}');
       if (isRenamed) {
         filePath = this.parseRenamedPath(filePath);
@@ -84,11 +95,92 @@ export class GitService {
       };
     });
 
+    let totalAdditions = diffSummary.insertions;
+    let totalDeletions = diffSummary.deletions;
+    let includesWorkingTree = false;
+
+    if (includeWorkingTree) {
+      const status = await this.git.status();
+      includesWorkingTree = status.files.length > 0;
+      const seen = new Set(files.map(file => file.path));
+
+      for (const filePath of status.not_added || []) {
+        if (!filePath || seen.has(filePath)) {
+          continue;
+        }
+        const additions = this._countTextLines(filePath);
+        files.push({
+          path: filePath,
+          additions,
+          deletions: 0,
+          status: 'added'
+        });
+        totalAdditions += additions;
+        seen.add(filePath);
+      }
+    }
+
     return {
       files,
-      totalAdditions: diffSummary.insertions,
-      totalDeletions: diffSummary.deletions
+      totalAdditions,
+      totalDeletions,
+      includesWorkingTree
     };
+  }
+
+  private _countTextLines(filePath: string): number {
+    const absPath = path.join(this.workspaceRoot, filePath);
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(absPath);
+    } catch (error) {
+      return 0;
+    }
+    if (!stat.isFile() || stat.size > 1024 * 1024) {
+      return 0;
+    }
+
+    const content = fs.readFileSync(absPath);
+    if (content.includes(0) || content.length === 0) {
+      return 0;
+    }
+
+    let lines = 0;
+    for (let i = 0; i < content.length; i++) {
+      if (content[i] === 10) {
+        lines++;
+      }
+    }
+    if (content[content.length - 1] !== 10) {
+      lines++;
+    }
+    return lines;
+  }
+
+  private async _uncommittedMarker(targetBranch: string): Promise<CommitInfo | null> {
+    if (!(await this.shouldUseWorkingTree(targetBranch))) {
+      return null;
+    }
+    const status = await this.git.status();
+    if (!status.files.length) {
+      return null;
+    }
+    return {
+      hash: 'UNCOMMITTED',
+      shortHash: 'local',
+      message: '未提交的更改',
+      author: '工作区',
+      date: '',
+      parents: []
+    };
+  }
+
+  private async _withUncommitted(commits: CommitInfo[], targetBranch: string): Promise<CommitInfo[]> {
+    const marker = await this._uncommittedMarker(targetBranch);
+    if (!marker) {
+      return commits;
+    }
+    return [marker, ...commits];
   }
 
   private parseRenamedPath(filePath: string): string {
@@ -124,7 +216,7 @@ export class GitService {
     ]);
     
     if (!result.trim()) {
-      return [];
+      return this._withUncommitted([], targetBranch);
     }
     
     const commits: CommitInfo[] = [];
@@ -183,7 +275,7 @@ export class GitService {
       });
     }
     
-    return commits;
+    return this._withUncommitted(commits, targetBranch);
   }
 
   async getFileContent(branch: string, filePath: string): Promise<string> {
@@ -210,4 +302,3 @@ export class GitService {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
 }
-
