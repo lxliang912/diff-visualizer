@@ -1,0 +1,19 @@
+LICENSE
+  s_464a89c2fa149c::t_3a7f9ca9710bc2 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21f6bba9d7b89be03169c618dfc0c4591ee73cbd",
+  "prompts": {},
+  "sessions": {
+    "s_464a89c2fa149c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "68fa41ad-660a-4e23-9c25-b06e0ee306a5",
+        "model": "grok-4.7"
+      },
+      "human_author": "xiaoliang.li <xiaoliang.li@lkcoffee.com>"
+    }
+  }
+}
