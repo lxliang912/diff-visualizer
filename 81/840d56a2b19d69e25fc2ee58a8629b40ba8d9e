@@ -1,0 +1,56 @@
+src/panels/BranchDiffViewProvider.ts
+  s_464a89c2fa149c::t_e35ac37e9562d6 4,10-11,33-65,88,92-95,105,117,128,139,147-148,155-172,185,194-203
+src/webview/main.js
+  s_464a89c2fa149c::t_0e75ae4ed95172 20
+  s_464a89c2fa149c::t_12dd663b79eb1e 571,574,583
+  s_464a89c2fa149c::t_9f208e378020a5 604
+  s_464a89c2fa149c::t_5e63c35ea0f2f1 112-115,190-191
+  s_464a89c2fa149c::t_cc63e49baa28e9 572-573,575-582,584,587-590,593,630
+  s_464a89c2fa149c::t_c237837f01dfef 117-118
+  s_464a89c2fa149c::t_374ffe3004890e 17-19
+  s_464a89c2fa149c::t_b5c6973de11eda 585,591-592
+  s_464a89c2fa149c::t_873a9a27b2fbaa 16
+  s_464a89c2fa149c::t_b60a6b9bfb472a 116
+  s_464a89c2fa149c::t_b7e51f1b4c19e2 119
+  s_464a89c2fa149c::t_713981d3f56a3c 187-189
+  s_464a89c2fa149c::t_317458b13bf890 192
+  s_464a89c2fa149c::t_f671195608fc2b 570
+  s_464a89c2fa149c::t_a61ef71878ff5d 586
+  s_464a89c2fa149c::t_118817a951d977 594-596,601-603
+  s_464a89c2fa149c::t_33a24e58200ae5 605
+  s_464a89c2fa149c::t_48749019564c2b 627-629
+  s_464a89c2fa149c::t_ad90255aa23b1c 76,94,185-186,319-368,370-372,376-377,380-382,403,597-600,610-611,614-618,621,624-626
+README.md
+  s_464a89c2fa149c::t_ad350d73daab6a 66-69
+  s_464a89c2fa149c::t_e6bb20ab6f6f6d 13,15-20,29-56,60-65,70-77
+src/panels/BranchDiffPanel.ts
+  s_464a89c2fa149c::t_c356cfef4a9a36 4,55-74,97-104,114,126,137,148,156-157,164-181,189-209
+src/services/gitService.ts
+  s_464a89c2fa149c::t_379bce6b61ebef 1,3-4,26,65-69,71-75,79,98-122,125-127,131-185,219,278
+src/services/repoEvents.ts
+  s_464a89c2fa149c::t_24e7b179c323dd 1-154
+src/services/openFiles.ts
+  s_464a89c2fa149c::t_b0d4cc8562a8ca 1-102
+src/extension.ts
+  s_464a89c2fa149c::t_fb666cc74b9451 5,8-21,23,27-29,31,44-47
+package.json
+  s_464a89c2fa149c::t_641a93396de35f 5
+src/webview/styles.css
+  s_464a89c2fa149c::t_bab5aba45b8322 106-107,223-227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81840d56a2b19d69e25fc2ee58a8629b40ba8d9e",
+  "prompts": {},
+  "sessions": {
+    "s_464a89c2fa149c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "68fa41ad-660a-4e23-9c25-b06e0ee306a5",
+        "model": "deepseek-v41-flash-1017"
+      },
+      "human_author": "xiaoliang.li <xiaoliang.li@lkcoffee.com>"
+    }
+  }
+}
